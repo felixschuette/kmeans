@@ -1,5 +1,5 @@
 from kmeans_test_data import *
-
+import math
 data = TestDataSet()
 
 
@@ -21,9 +21,15 @@ class KMeans:
                                 deviation=self.deviation)
         # update number of points
         self.nmbr_of_points = self.data.all_points.shape[0]
-        self.initialize_centroids_plus_plus()
+
+
+    def initialize_centroids_random(self):
+        # Generate k random centroids
+        self.center_points = []
+        self.center_points = [self.data.all_points[int(random.randint(0, self.nmbr_of_points))] for k in range(self.k)]
 
     def initialize_centroids_plus_plus(self):
+        self.center_points = []
         # Choose random center point (step 1)
         c_new = self.data.all_points[int(random.randint(0, self.nmbr_of_points))]
         self.center_points.append(c_new)
@@ -51,6 +57,29 @@ class KMeans:
             # Choose value with respect to the probabilities
             c_new = self.data.all_points[np.random.choice(np.arange(len(self.pdf)), p=self.pdf, size=1)][0]
             self.center_points.append(c_new)
+
+    def initialize_centroids_parallel(self, psi=0):
+        self.center_points = []
+        # Sample a point uniformly at random from X
+        self.center_points = [self.data.all_points[int(random.randint(0, self.nmbr_of_points))]]
+        # Calculate the cost psi
+        psi = [psi + np.linalg.norm(self.center_points[0] - self.data.all_points[i]) ** 2 for i in
+               range(self.data.all_points.shape[0])]
+        psi = sum(psi)
+        number_of_rounds = round(math.log(psi))
+        for r in range(number_of_rounds):
+            # Calculate distance to closest center for each point, and sum up
+            self._calculate_distance_to_closest_centroid()
+            new_costs = sum(self.d_i)
+            for i in range(self.data.all_points.shape[0]):
+                probability = (self.oversampling_factor * self.d_i[i])/new_costs
+                # sample point
+                if random.uniform(0, 1) < probability:
+                    self.center_points.append(self.data.all_points[i])
+        # Choose from many centroids
+        self._classify_points()
+        print(self.clusters)
+        #self.center_points = []
 
     def start_clustering(self):
         number_of_iterations = 1
@@ -94,6 +123,18 @@ class KMeans:
             centroids.append(np.divide(centroid, len(positions))[0])
         return centroids
 
+    def _calculate_distance_to_closest_centroid(self):
+        for i in range(self.data.all_points.shape[0]):
+            # No distances calculated until now
+            if len(self.d_i) < self.data.all_points.shape[0]:
+                self.d_i.append(np.linalg.norm(self.center_points[0] - self.data.all_points[i]) ** 2)
+            # Checking for the min. distance
+            else:
+                for centroid in self.center_points:
+                    # Comparing old distance with new distance
+                    if np.linalg.norm(centroid - self.data.all_points[i]) ** 2 < self.d_i[i]:
+                        self.d_i[i] = np.linalg.norm(centroid - self.data.all_points[i]) ** 2
+
     def plot(self):
         # Plot all points
         plt.plot(self.data.all_points[:, 0], self.data.all_points[:, 1], 'bo')
@@ -113,5 +154,7 @@ class KMeans:
 
 if __name__ == '__main__':
     kmeans = KMeans()
+    kmeans.initialize_centroids_random()
     kmeans.start_clustering()
-    kmeans.plot()
+    kmeans.initialize_centroids_plus_plus()
+    kmeans.start_clustering()
