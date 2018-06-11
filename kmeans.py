@@ -1,10 +1,14 @@
+from pip._vendor import colorama
+
 from kmeans_test_data import *
 import math
+import time
+
 data = TestDataSet()
 
 
 class KMeans:
-    def __init__(self, k=7, points=500, dim_x=1000, dim_y=1000, deviation=50, oversampling_factor=2):
+    def __init__(self, k=50, points=10000, dim_x=10000, dim_y=10000, deviation=200, oversampling_factor=25):
         self.k = k
         self.nmbr_of_points = points
         self.dim_x = dim_x
@@ -21,7 +25,7 @@ class KMeans:
                                 deviation=self.deviation)
         # update number of points
         self.nmbr_of_points = self.data.all_points.shape[0]
-
+        # np.seterr(divide='ignore', invalid='ignore')
 
     def initialize_centroids_random(self):
         # Generate k random centroids
@@ -67,33 +71,27 @@ class KMeans:
                range(self.data.all_points.shape[0])]
         psi = sum(psi)
         number_of_rounds = round(math.log(psi))
-        for r in range(number_of_rounds):
+        for r in range(5):
             # Calculate distance to closest center for each point, and sum up
             self._calculate_distance_to_closest_centroid()
             new_costs = sum(self.d_i)
             for i in range(self.data.all_points.shape[0]):
-                probability = (self.oversampling_factor * self.d_i[i])/new_costs
+                probability = (self.oversampling_factor * self.d_i[i]) / new_costs
                 # sample point
-                if random.uniform(0, 1) < probability:
+                if random.uniform(0, 1) <= probability:
                     self.center_points.append(self.data.all_points[i])
         # Choose from many centroids
         self._classify_points()
-        occurencies = {i: self.clusters.count(i) for i in range(len(self.center_points))}
+        occurrences = {str(i): self.clusters.count(i) for i in range(len(self.center_points))}
+        new_centroids = []
         # Take centroids with highest occurrence
         for i in range(self.k):
-            highest_occurence = max(occurencies.values())
-            for occurence in occurencies:
-                print(occurence)
-
-        print("Clusters: ", self.clusters)
-        print("Occurencies: ", occurencies)
-        print("Occurencies.values: ", occurencies.values())
-        print(max(occurencies.values()))
-
-
-
-
-        #self.center_points = []
+            # Delete item and save it into center points:
+            # del self.center_points[index]
+            maximum_occurrences = max(occurrences, key=occurrences.get)
+            del occurrences[maximum_occurrences]
+            new_centroids.append(self.center_points[int(maximum_occurrences)])
+        self.center_points = new_centroids
 
     def start_clustering(self):
         number_of_iterations = 1
@@ -134,7 +132,8 @@ class KMeans:
             positions = [j for j, s in enumerate(self.clusters) if i is s]
             for p in positions:
                 centroid = centroid + self.data.all_points[p]
-            centroids.append(np.divide(centroid, len(positions))[0])
+            if len(positions) != 0:
+                centroids.append(np.divide(centroid, len(positions))[0])
         return centroids
 
     def _calculate_distance_to_closest_centroid(self):
@@ -155,9 +154,10 @@ class KMeans:
 
         # Plot clusters with different colors
         for i in range(self.k):
+            rgb = self.plot_colors[int(random.uniform(0, 6))]
             positions = [j for j, s in enumerate(self.clusters) if i is s]
             for position in positions:
-                plt.plot(self.data.all_points[position, 0], self.data.all_points[position, 1], self.plot_colors[i])
+                plt.plot(self.data.all_points[position, 0], self.data.all_points[position, 1], rgb)
 
         # Plot centers
         for p in self.center_points:
@@ -168,8 +168,17 @@ class KMeans:
 
 if __name__ == '__main__':
     kmeans = KMeans()
-    kmeans.initialize_centroids_random()
-    kmeans.start_clustering()
+    # kmeans.initialize_centroids_random()
+    # kmeans.start_clustering()
+    # kmeans.plot()
+    start_time = time.time()
     kmeans.initialize_centroids_plus_plus()
     kmeans.start_clustering()
+    print("Time elapsed for kmeans ++: ", time.time() - start_time)
+    kmeans.plot()
+
+    start_time = time.time()
     kmeans.initialize_centroids_parallel()
+    kmeans.start_clustering()
+    print("Time elapsed for scalable kmeans: ", time.time() - start_time)
+    kmeans.plot()
