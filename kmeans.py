@@ -78,7 +78,21 @@ class KMeans:
                     self.center_points.append(self.data.all_points[i])
         # Choose from many centroids
         self._classify_points()
-        print(self.clusters)
+        occurencies = {i: self.clusters.count(i) for i in range(len(self.center_points))}
+        # Take centroids with highest occurrence
+        for i in range(self.k):
+            highest_occurence = max(occurencies.values())
+            for occurence in occurencies:
+                print(occurence)
+
+        print("Clusters: ", self.clusters)
+        print("Occurencies: ", occurencies)
+        print("Occurencies.values: ", occurencies.values())
+        print(max(occurencies.values()))
+
+
+
+
         #self.center_points = []
 
     def start_clustering(self):
@@ -158,3 +172,4 @@ if __name__ == '__main__':
     kmeans.start_clustering()
     kmeans.initialize_centroids_plus_plus()
     kmeans.start_clustering()
+    kmeans.initialize_centroids_parallel()
